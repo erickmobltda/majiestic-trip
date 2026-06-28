@@ -7,11 +7,19 @@ interface Props {
   results: RankedFlightResult[]
   isLoadingAward: boolean
   isLoadingCash: boolean
+  hasSearched?: boolean
   savedFlight?: SavedFlight
   onSave: (ranked: RankedFlightResult) => void
 }
 
-export function FlightResultList({ results, isLoadingAward, isLoadingCash, savedFlight, onSave }: Props) {
+export function FlightResultList({
+  results,
+  isLoadingAward,
+  isLoadingCash,
+  hasSearched = false,
+  savedFlight,
+  onSave,
+}: Props) {
   if (isLoadingAward && results.length === 0) {
     return (
       <div className="space-y-3">
@@ -29,7 +37,11 @@ export function FlightResultList({ results, isLoadingAward, isLoadingCash, saved
   if (results.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-        <p className="text-sm">No flight results yet. Search to find options.</p>
+        <p className="text-sm">
+          {hasSearched
+            ? 'No matching flights found. See the notes above, or try different dates.'
+            : 'No flight results yet. Search to find options.'}
+        </p>
       </div>
     )
   }

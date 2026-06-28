@@ -21,6 +21,7 @@ export function FlightSearchPanel({ trip, userPrograms, onSaveFlight }: Props) {
     isLoadingCash,
     awardError,
     cashError,
+    searchedMode,
     search,
     searchAwardOnly,
     searchCashOnly,
@@ -32,6 +33,24 @@ export function FlightSearchPanel({ trip, userPrograms, onSaveFlight }: Props) {
     trip.destinations.length > 0 &&
     trip.destinations[0]?.airport &&
     trip.dates.startDate
+
+  const hasMilesPrograms = userPrograms.some((p) => p.currentMiles > 0 && p.seatsaeroSource)
+  const awardCount = results.filter((r) => r.result.source === 'seatsaero').length
+  const cashCount = results.filter((r) => r.result.source === 'serpapi').length
+  // A search ran for award/cash but came back with nothing — distinct from "no
+  // search yet". Award empties are common: a Pro seats.aero key only sees the
+  // cached database (no live search), so many routes/dates have no award space.
+  const awardEmpty =
+    (searchedMode === 'all' || searchedMode === 'award') &&
+    !isLoadingAward &&
+    !awardError &&
+    hasMilesPrograms &&
+    awardCount === 0
+  const cashEmpty =
+    (searchedMode === 'all' || searchedMode === 'cash') &&
+    !isLoadingCash &&
+    !cashError &&
+    cashCount === 0
 
   async function handleSearchAll() {
     if (estimatedCallCount > 20) {
@@ -124,10 +143,32 @@ export function FlightSearchPanel({ trip, userPrograms, onSaveFlight }: Props) {
         </div>
       )}
 
+      {awardEmpty && (
+        <div className="flex items-start gap-2 rounded-md bg-muted border p-3 text-sm text-muted-foreground">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>
+            No award space found for {trip.departureAirport}→{trip.destinations[0]?.airport} on this
+            date in seats.aero's cached data. Award coverage is sparse for some routes — try nearby
+            dates or a different program.
+          </span>
+        </div>
+      )}
+
+      {cashEmpty && (
+        <div className="flex items-start gap-2 rounded-md bg-muted border p-3 text-sm text-muted-foreground">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>
+            No cash flights found for {trip.departureAirport}→{trip.destinations[0]?.airport} on
+            these dates. Check the dates (a round-trip needs a return date after departure).
+          </span>
+        </div>
+      )}
+
       <FlightResultList
         results={results}
         isLoadingAward={isLoadingAward}
         isLoadingCash={isLoadingCash}
+        hasSearched={searchedMode !== null}
         savedFlight={trip.savedFlight}
         onSave={handleSave}
       />

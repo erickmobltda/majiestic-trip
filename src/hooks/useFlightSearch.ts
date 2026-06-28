@@ -7,12 +7,15 @@ import { searchCashFlights } from '@/services/serpapi/client'
 import { rankFlights } from '@/lib/flightRanker'
 import { format } from 'date-fns'
 
+export type SearchMode = 'all' | 'award' | 'cash' | null
+
 interface FlightSearchState {
   results: RankedFlightResult[]
   isLoadingAward: boolean
   isLoadingCash: boolean
   awardError: string | null
   cashError: string | null
+  searchedMode: SearchMode
 }
 
 export function useFlightSearch(trip: Trip, userPrograms: MileageProgram[]) {
@@ -22,6 +25,7 @@ export function useFlightSearch(trip: Trip, userPrograms: MileageProgram[]) {
     isLoadingCash: false,
     awardError: null,
     cashError: null,
+    searchedMode: null,
   })
 
   const searchAward = useCallback(async () => {
@@ -90,29 +94,32 @@ export function useFlightSearch(trip: Trip, userPrograms: MileageProgram[]) {
 
     const [awardResults, cashResults] = await Promise.all([searchAward(), searchCash()])
     const ranked = rankFlights(awardResults, cashResults)
-    setState((s) => ({ ...s, results: ranked }))
+    setState((s) => ({ ...s, results: ranked, searchedMode: 'all' }))
   }, [searchAward, searchCash])
 
   const searchAwardOnly = useCallback(async () => {
     setState((s) => ({ ...s, results: [], awardError: null }))
     const awardResults = await searchAward()
     const ranked = rankFlights(awardResults, [])
-    setState((s) => ({ ...s, results: ranked }))
+    setState((s) => ({ ...s, results: ranked, searchedMode: 'award' }))
   }, [searchAward])
 
   const searchCashOnly = useCallback(async () => {
-    setState((s) => ({ ...s, cashError: null }))
+    setState((s) => ({ ...s, results: [], cashError: null }))
     const cashResults = await searchCash()
-    const existing = state.results.map((r) => r.result).filter((r) => r.source === 'seatsaero')
-    const ranked = rankFlights(
-      existing.filter((r) => r.source === 'seatsaero') as Parameters<typeof rankFlights>[0],
-      cashResults
-    )
-    setState((s) => ({ ...s, results: ranked }))
-  }, [searchCash, state.results])
+    const ranked = rankFlights([], cashResults)
+    setState((s) => ({ ...s, results: ranked, searchedMode: 'cash' }))
+  }, [searchCash])
 
   const reset = useCallback(() => {
-    setState({ results: [], isLoadingAward: false, isLoadingCash: false, awardError: null, cashError: null })
+    setState({
+      results: [],
+      isLoadingAward: false,
+      isLoadingCash: false,
+      awardError: null,
+      cashError: null,
+      searchedMode: null,
+    })
   }, [])
 
   const estimatedCallCount = userPrograms.filter((p) => p.currentMiles > 0).length
