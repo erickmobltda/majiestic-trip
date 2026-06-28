@@ -8,11 +8,20 @@ export interface FlightSegment {
   durationMinutes: number
 }
 
+export interface CabinPrice {
+  cabin: 'economy' | 'premium' | 'business' | 'first'
+  miles: number
+  available: boolean
+}
+
 export interface AwardFlightResult {
   id: string
   source: 'seatsaero'
   program: string
   programLabel: string
+  // Per-cabin pricing for this program/route (shown as columns, like seats.aero).
+  cabins: CabinPrice[]
+  // Cheapest available cabin — used for ranking, affordability and the headline.
   milesRequired: number
   cabin: string
   stops: number
