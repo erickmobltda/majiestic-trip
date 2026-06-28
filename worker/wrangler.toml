@@ -1,0 +1,12 @@
+name = "majiestic-trip-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+
+# Secrets (set with `wrangler secret put <NAME>`, never commit them):
+#   wrangler secret put SERPAPI_KEY
+#   wrangler secret put SEATSAERO_KEY
+#
+# Optional: override the allowed browser origins (comma-separated).
+# Defaults to the GitHub Pages site + localhost dev ports.
+# [vars]
+# ALLOWED_ORIGINS = "https://erickmobltda.github.io"

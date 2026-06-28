@@ -1,6 +1,8 @@
 import type { CashFlightResult, FlightSegment } from '@/types/flight'
 
-const BASE_URL = 'https://serpapi.com/search'
+// Cash flights are fetched through our Cloudflare Worker proxy (see /worker),
+// which holds the SerpApi key server-side and adds CORS headers.
+const API_BASE = import.meta.env.VITE_API_BASE_URL
 
 export interface SerpApiSearchParams {
   departureId: string
@@ -41,15 +43,12 @@ interface SerpApiResponse {
 export async function searchCashFlights(
   params: SerpApiSearchParams
 ): Promise<CashFlightResult[]> {
-  const apiKey = import.meta.env.VITE_SERPAPI_API_KEY
-  if (!apiKey) {
-    console.warn('SerpApi key not configured')
+  if (!API_BASE) {
+    console.warn('VITE_API_BASE_URL not configured — cannot reach flight proxy')
     return []
   }
 
-  const url = new URL(BASE_URL)
-  url.searchParams.set('engine', 'google_flights')
-  url.searchParams.set('api_key', apiKey)
+  const url = new URL(`${API_BASE}/api/flights/cash`)
   url.searchParams.set('departure_id', params.departureId)
   url.searchParams.set('arrival_id', params.arrivalId)
   url.searchParams.set('outbound_date', params.outboundDate)
