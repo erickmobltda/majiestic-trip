@@ -8,9 +8,9 @@ export interface Traveler {
 }
 
 export interface Destination {
-  city: string
   country: string
   airport: string
+  airportName: string
 }
 
 export interface TripDates {

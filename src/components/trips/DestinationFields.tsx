@@ -1,21 +1,22 @@
 import { useFieldArray } from 'react-hook-form'
-import type { Control } from 'react-hook-form'
+import type { Control, UseFormSetValue, UseFormWatch } from 'react-hook-form'
 import { Plus, X, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { AirportCombobox } from '@/components/trips/AirportCombobox'
+import type { Airport } from '@/lib/airports'
 
 interface DestinationFieldsProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  register: any
+  setValue: UseFormSetValue<any>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  errors: any
+  watch: UseFormWatch<any>
   tripType: string
 }
 
-export function DestinationFields({ control, register, errors, tripType }: DestinationFieldsProps) {
+export function DestinationFields({ control, setValue, watch, tripType }: DestinationFieldsProps) {
   const { fields, append, remove } = useFieldArray({
     control,
     name: 'destinations',
@@ -23,6 +24,20 @@ export function DestinationFields({ control, register, errors, tripType }: Desti
 
   const maxDestinations = tripType === 'multi-city' ? 10 : 1
   const canAdd = fields.length < maxDestinations && tripType === 'multi-city'
+
+  const destinations = watch('destinations') as { airport: string; country: string; airportName: string }[]
+
+  function handleAirportChange(index: number, airport: Airport | null) {
+    if (airport) {
+      setValue(`destinations.${index}.airport`, airport.code, { shouldValidate: true })
+      setValue(`destinations.${index}.country`, airport.country)
+      setValue(`destinations.${index}.airportName`, airport.name)
+    } else {
+      setValue(`destinations.${index}.airport`, '', { shouldValidate: true })
+      setValue(`destinations.${index}.country`, '')
+      setValue(`destinations.${index}.airportName`, '')
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -33,7 +48,7 @@ export function DestinationFields({ control, register, errors, tripType }: Desti
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => append({ city: '', country: '', airport: '' })}
+            onClick={() => append({ country: '', airport: '', airportName: '' })}
           >
             <Plus className="mr-1 h-3.5 w-3.5" />
             Add destination
@@ -62,39 +77,14 @@ export function DestinationFields({ control, register, errors, tripType }: Desti
               )}
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs">City</Label>
-                <Input
-                  placeholder="Tokyo"
-                  className="h-8"
-                  {...register(`destinations.${index}.city`)}
-                />
-                {errors?.destinations?.[index]?.city && (
-                  <p className="text-xs text-destructive">{errors.destinations[index].city.message}</p>
-                )}
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Country</Label>
-                <Input
-                  placeholder="Japan"
-                  className="h-8"
-                  {...register(`destinations.${index}.country`)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Airport (IATA)</Label>
-                <Input
-                  placeholder="NRT"
-                  className="h-8 font-mono uppercase"
-                  maxLength={3}
-                  {...register(`destinations.${index}.airport`)}
-                />
-                {errors?.destinations?.[index]?.airport && (
-                  <p className="text-xs text-destructive">{errors.destinations[index].airport.message}</p>
-                )}
-              </div>
-            </div>
+            <AirportCombobox
+              value={destinations?.[index]?.airport ?? ''}
+              onChange={(airport) => handleAirportChange(index, airport)}
+              placeholder="Search destination airport..."
+            />
+            {destinations?.[index]?.country && (
+              <p className="text-xs text-muted-foreground pl-1">{destinations[index].country}</p>
+            )}
           </div>
         ))}
       </div>

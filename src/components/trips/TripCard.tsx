@@ -30,7 +30,7 @@ export function TripCard({ trip }: Props) {
             <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
               <MapPin className="h-3.5 w-3.5" />
               {primaryDest
-                ? `${primaryDest.city}, ${primaryDest.country}`
+                ? primaryDest.airportName || `${primaryDest.airport}, ${primaryDest.country}`
                 : 'Destination not set'}
               {trip.destinations.length > 1 && (
                 <span className="text-xs">+{trip.destinations.length - 1} more</span>
