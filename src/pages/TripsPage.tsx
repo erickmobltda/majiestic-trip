@@ -18,7 +18,8 @@ export function TripsPage() {
     try {
       await addTrip(data)
       toast({ title: 'Trip created!' })
-    } catch {
+    } catch (err) {
+      console.error('Failed to create trip:', err)
       toast({ title: 'Error creating trip', variant: 'destructive' })
     }
   }
