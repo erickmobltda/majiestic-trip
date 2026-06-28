@@ -3,7 +3,6 @@ import { useForm, type Control, type FieldValues } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Dialog,
@@ -23,27 +22,21 @@ import { Separator } from '@/components/ui/separator'
 import { TravelerFields } from '@/components/trips/TravelerFields'
 import { DestinationFields } from '@/components/trips/DestinationFields'
 import { DateFields } from '@/components/trips/DateFields'
+import { AirportCombobox } from '@/components/trips/AirportCombobox'
+import type { Airport } from '@/lib/airports'
 import type { Trip, TripType, TripStatus } from '@/types/trip'
 
 const schema = z.object({
   name: z.string().min(1, 'Trip name is required'),
   status: z.enum(['planning', 'booked', 'completed']),
   tripType: z.enum(['one-way', 'round-trip', 'multi-city']),
-  departureAirport: z
-    .string()
-    .min(3, 'Enter a 3-letter IATA code')
-    .max(3)
-    .regex(/^[A-Za-z]{3}$/, 'Must be a 3-letter code'),
+  departureAirport: z.string().min(3, 'Select a departure airport'),
   destinations: z
     .array(
       z.object({
-        city: z.string().min(1, 'City required'),
         country: z.string(),
-        airport: z
-          .string()
-          .min(3, 'IATA required')
-          .max(3)
-          .regex(/^[A-Za-z]{3}$/, '3-letter code'),
+        airport: z.string().min(3, 'Select a destination airport'),
+        airportName: z.string(),
       })
     )
     .min(1, 'At least one destination'),
@@ -82,7 +75,7 @@ export function TripForm({ open, onClose, onSave, trip }: Props) {
       status: 'planning',
       tripType: 'round-trip',
       departureAirport: '',
-      destinations: [{ city: '', country: '', airport: '' }],
+      destinations: [{ country: '', airport: '', airportName: '' }],
       travelers: [{ type: 'adult' }],
       dates: { flexible: false, startDate: '', endDate: '', flexDays: 2 },
       notes: '',
@@ -90,6 +83,7 @@ export function TripForm({ open, onClose, onSave, trip }: Props) {
   })
 
   const tripType = watch('tripType')
+  const departureAirport = watch('departureAirport')
 
   useEffect(() => {
     if (open) {
@@ -115,7 +109,7 @@ export function TripForm({ open, onClose, onSave, trip }: Props) {
           status: 'planning',
           tripType: 'round-trip',
           departureAirport: '',
-          destinations: [{ city: '', country: '', airport: '' }],
+          destinations: [{ country: '', airport: '', airportName: '' }],
           travelers: [{ type: 'adult' }],
           dates: { flexible: false, startDate: '', endDate: '', flexDays: 2 },
           notes: '',
@@ -124,13 +118,21 @@ export function TripForm({ open, onClose, onSave, trip }: Props) {
     }
   }, [open, trip, reset])
 
+  function handleDepartureChange(airport: Airport | null) {
+    setValue('departureAirport', airport?.code ?? '', { shouldValidate: true })
+  }
+
   async function onSubmit(data: FormData) {
     await onSave({
       name: data.name,
       status: data.status as TripStatus,
       tripType: data.tripType as TripType,
       departureAirport: data.departureAirport.toUpperCase(),
-      destinations: data.destinations.map((d) => ({ ...d, airport: d.airport.toUpperCase() })),
+      destinations: data.destinations.map((d) => ({
+        country: d.country,
+        airport: d.airport.toUpperCase(),
+        airportName: d.airportName,
+      })),
       travelers: data.travelers,
       dates: {
         flexible: Boolean(data.dates.flexible),
@@ -154,7 +156,12 @@ export function TripForm({ open, onClose, onSave, trip }: Props) {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="name">Trip Name</Label>
-              <Input id="name" placeholder="Japan Adventure 2025" {...register('name')} />
+              <input
+                id="name"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                placeholder="Japan Adventure 2025"
+                {...register('name')}
+              />
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
 
@@ -192,13 +199,11 @@ export function TripForm({ open, onClose, onSave, trip }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="departureAirport">Departure Airport (IATA)</Label>
-              <Input
-                id="departureAirport"
-                placeholder="LAX"
-                className="font-mono uppercase w-28"
-                maxLength={3}
-                {...register('departureAirport')}
+              <Label>Departure Airport</Label>
+              <AirportCombobox
+                value={departureAirport}
+                onChange={handleDepartureChange}
+                placeholder="Search departure airport..."
               />
               {errors.departureAirport && (
                 <p className="text-xs text-destructive">{errors.departureAirport.message}</p>
@@ -210,8 +215,8 @@ export function TripForm({ open, onClose, onSave, trip }: Props) {
 
           <DestinationFields
             control={control as unknown as Control<FieldValues>}
-            register={register}
-            errors={errors}
+            setValue={setValue as unknown as import('react-hook-form').UseFormSetValue<import('react-hook-form').FieldValues>}
+            watch={watch as unknown as import('react-hook-form').UseFormWatch<import('react-hook-form').FieldValues>}
             tripType={tripType}
           />
 
@@ -251,3 +256,4 @@ export function TripForm({ open, onClose, onSave, trip }: Props) {
     </Dialog>
   )
 }
+

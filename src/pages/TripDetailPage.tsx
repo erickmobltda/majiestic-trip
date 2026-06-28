@@ -152,7 +152,7 @@ export function TripDetailPage() {
               <span>{trip.destinations.map((d) => d.airport).join(' → ')}</span>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              {trip.destinations.map((d) => `${d.city}, ${d.country}`).join(' → ')}
+              {trip.destinations.map((d) => d.airportName || d.country).join(' → ')}
             </p>
             <Badge variant="outline" className="mt-2 capitalize">{trip.tripType}</Badge>
           </CardContent>
