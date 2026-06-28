@@ -17,6 +17,11 @@ dist-ssr
 .env.test.local
 .env.production.local
 
+# Cloudflare Worker
+.wrangler
+worker/.dev.vars
+worker/node_modules
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
