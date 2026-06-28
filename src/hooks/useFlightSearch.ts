@@ -29,15 +29,18 @@ export function useFlightSearch(trip: Trip, userPrograms: MileageProgram[]) {
   })
 
   const searchAward = useCallback(async () => {
-    const programsWithMiles = userPrograms.filter((p) => p.currentMiles > 0 && p.seatsaeroSource)
-    if (programsWithMiles.length === 0) return []
+    // Award availability is independent of how many miles you hold — your
+    // balance only affects affordability. So search every program that maps to
+    // a seats.aero source, regardless of currentMiles.
+    const searchablePrograms = userPrograms.filter((p) => p.seatsaeroSource)
+    if (searchablePrograms.length === 0) return []
 
     setState((s) => ({ ...s, isLoadingAward: true, awardError: null }))
 
     const destination = trip.destinations[0]
     const departureDate = trip.dates.startDate
 
-    const searchPromises = programsWithMiles.map((program) =>
+    const searchPromises = searchablePrograms.map((program) =>
       searchAwardFlights(
         {
           originAirport: trip.departureAirport,
@@ -90,25 +93,25 @@ export function useFlightSearch(trip: Trip, userPrograms: MileageProgram[]) {
   }, [trip])
 
   const search = useCallback(async () => {
-    setState((s) => ({ ...s, results: [], awardError: null, cashError: null }))
+    setState((s) => ({ ...s, results: [], awardError: null, cashError: null, searchedMode: 'all' }))
 
     const [awardResults, cashResults] = await Promise.all([searchAward(), searchCash()])
     const ranked = rankFlights(awardResults, cashResults)
-    setState((s) => ({ ...s, results: ranked, searchedMode: 'all' }))
+    setState((s) => ({ ...s, results: ranked }))
   }, [searchAward, searchCash])
 
   const searchAwardOnly = useCallback(async () => {
-    setState((s) => ({ ...s, results: [], awardError: null }))
+    setState((s) => ({ ...s, results: [], awardError: null, searchedMode: 'award' }))
     const awardResults = await searchAward()
     const ranked = rankFlights(awardResults, [])
-    setState((s) => ({ ...s, results: ranked, searchedMode: 'award' }))
+    setState((s) => ({ ...s, results: ranked }))
   }, [searchAward])
 
   const searchCashOnly = useCallback(async () => {
-    setState((s) => ({ ...s, results: [], cashError: null }))
+    setState((s) => ({ ...s, results: [], cashError: null, searchedMode: 'cash' }))
     const cashResults = await searchCash()
     const ranked = rankFlights([], cashResults)
-    setState((s) => ({ ...s, results: ranked, searchedMode: 'cash' }))
+    setState((s) => ({ ...s, results: ranked }))
   }, [searchCash])
 
   const reset = useCallback(() => {
@@ -122,7 +125,7 @@ export function useFlightSearch(trip: Trip, userPrograms: MileageProgram[]) {
     })
   }, [])
 
-  const estimatedCallCount = userPrograms.filter((p) => p.currentMiles > 0).length
+  const estimatedCallCount = userPrograms.filter((p) => p.seatsaeroSource).length
 
   return {
     ...state,
