@@ -37,13 +37,7 @@ export function FlightResultCard({ ranked, isSaved, onSave }: Props) {
                 </Badge>
 
                 {isAward && result.source === 'seatsaero' && (
-                  <>
-                    <span className="font-semibold text-primary">
-                      {result.milesRequired.toLocaleString()} miles
-                    </span>
-                    <Badge variant="outline">{CABIN_LABELS[result.cabin] ?? result.cabin}</Badge>
-                    <span className="text-xs text-muted-foreground">{result.programLabel}</span>
-                  </>
+                  <span className="text-sm font-semibold">{result.programLabel}</span>
                 )}
 
                 {!isAward && result.source === 'serpapi' && (
@@ -70,6 +64,31 @@ export function FlightResultCard({ ranked, isSaved, onSave }: Props) {
                 )}
               </div>
             </div>
+
+            {isAward && result.source === 'seatsaero' && (
+              <div className="grid grid-cols-4 gap-2">
+                {result.cabins.map((c) => (
+                  <div
+                    key={c.cabin}
+                    className={cn(
+                      'rounded-md border px-2 py-1.5 text-center',
+                      c.available ? 'bg-primary/5 border-primary/20' : 'bg-muted/40'
+                    )}
+                  >
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {CABIN_LABELS[c.cabin] ?? c.cabin}
+                    </div>
+                    {c.available ? (
+                      <div className="text-sm font-semibold text-primary">
+                        {c.miles.toLocaleString()}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">—</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">

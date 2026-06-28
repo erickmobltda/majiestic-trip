@@ -1,5 +1,6 @@
-import type { AwardFlightResult, FlightSegment } from '@/types/flight'
+import type { AwardFlightResult, CabinPrice, FlightSegment } from '@/types/flight'
 import { enrichAwardResults } from '@/lib/flightRanker'
+import { programLabel } from '@/lib/constants'
 import type { MileageProgram } from '@/types/mileage'
 
 // Award flights are fetched through our Cloudflare Worker proxy (see /worker),
@@ -40,7 +41,7 @@ interface SeatsaeroAvailability {
   [key: string]: unknown
 }
 
-const CABINS: Array<{ key: 'Y' | 'W' | 'J' | 'F'; label: string }> = [
+const CABINS: Array<{ key: 'Y' | 'W' | 'J' | 'F'; label: CabinPrice['cabin'] }> = [
   { key: 'Y', label: 'economy' },
   { key: 'W', label: 'premium' },
   { key: 'J', label: 'business' },
@@ -75,32 +76,40 @@ export async function searchAwardFlights(
     const data = await response.json()
     const availabilities: SeatsaeroAvailability[] = data?.data ?? []
 
+    // One result per availability record, carrying all four cabin prices so the
+    // card can show them as columns (like seats.aero's Economy/Premium/Business/First).
     const rawResults = availabilities.flatMap((avail) => {
-      const results = []
+      const cabins: CabinPrice[] = CABINS.map((cabin) => {
+        const available = Boolean(avail[`${cabin.key}Available`])
+        const miles = Number(avail[`${cabin.key}MileageCost`]) || 0
+        return { cabin: cabin.label, miles, available: available && miles > 0 }
+      })
 
-      for (const cabin of CABINS) {
-        const available = avail[`${cabin.key}Available`] as boolean | undefined
-        const miles = Number(avail[`${cabin.key}MileageCost`])
-        if (!available || !miles || miles <= 0) continue
+      const availableCabins = cabins.filter((c) => c.available)
+      if (availableCabins.length === 0) return []
 
-        const direct = avail[`${cabin.key}Direct`] as boolean | undefined
-        const airlines = (avail[`${cabin.key}Airlines`] as string | undefined) ?? ''
-        const segments = buildSegments(avail, airlines)
-        const totalDuration = segments.reduce((sum, s) => sum + s.durationMinutes, 0)
+      // Cheapest available cabin drives ranking, affordability and the headline.
+      const best = availableCabins.reduce((a, b) => (b.miles < a.miles ? b : a))
+      const bestKey = CABINS.find((c) => c.label === best.cabin)!.key
+      const direct = Boolean(avail[`${bestKey}Direct`])
+      const airlines = (avail[`${bestKey}Airlines`] as string | undefined) ?? ''
+      const segments = buildSegments(avail, airlines)
+      const totalDuration = segments.reduce((sum, s) => sum + s.durationMinutes, 0)
 
-        results.push({
-          id: `${avail.ID ?? Math.random()}-${cabin.key}`,
+      return [
+        {
+          id: `${avail.ID ?? Math.random()}`,
           program: params.source,
-          programLabel: getProgramLabel(params.source),
-          milesRequired: miles,
-          cabin: cabin.label,
+          programLabel: programLabel(params.source),
+          cabins,
+          milesRequired: best.miles,
+          cabin: best.cabin,
           stops: direct ? 0 : Math.max(segments.length - 1, 1),
           totalDurationMinutes: totalDuration || 480,
           segments,
           rawData: avail as Record<string, unknown>,
-        })
-      }
-      return results
+        },
+      ]
     })
 
     return enrichAwardResults(rawResults, userPrograms)
@@ -137,25 +146,4 @@ function buildSegments(avail: SeatsaeroAvailability, airlines: string): FlightSe
       durationMinutes: 0,
     },
   ]
-}
-
-function getProgramLabel(source: string): string {
-  const labels: Record<string, string> = {
-    united: 'United MileagePlus',
-    delta: 'Delta SkyMiles',
-    american: 'American AAdvantage',
-    alaska: 'Alaska Mileage Plan',
-    southwest: 'Southwest Rapid Rewards',
-    jetblue: 'JetBlue TrueBlue',
-    aeroplan: 'Air Canada Aeroplan',
-    ba: 'British Airways Avios',
-    emirates: 'Emirates Skywards',
-    flyingblue: 'Flying Blue',
-    singapore: 'Singapore KrisFlyer',
-    avianca: 'LifeMiles',
-    turkish: 'Miles&Smiles',
-    qantas: 'Qantas FF',
-    virgin_atlantic: 'Virgin Atlantic',
-  }
-  return labels[source] ?? source
 }

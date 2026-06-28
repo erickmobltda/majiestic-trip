@@ -11,6 +11,7 @@ interface RawAwardResult {
   id: string
   program: string
   programLabel: string
+  cabins: AwardFlightResult['cabins']
   milesRequired: number
   cabin: string
   stops: number
@@ -42,7 +43,7 @@ export function enrichAwardResults(
 export function rankFlights(
   awardResults: AwardFlightResult[],
   cashResults: CashFlightResult[],
-  maxResults = 5
+  maxResults = 25
 ): RankedFlightResult[] {
   const all: FlightResult[] = [...awardResults, ...cashResults]
   if (all.length === 0) return []
@@ -94,6 +95,12 @@ export function rankFlights(
 }
 
 function dedupeKey(r: FlightResult): string {
+  // Award results for the same route share a synthetic route-level segment, so
+  // key them by program to keep each program distinct (one row per program).
+  if (r.source === 'seatsaero') {
+    const segKey = r.segments.map((s) => `${s.departureAirport}-${s.arrivalAirport}`).join('|')
+    return `seatsaero:${r.program}:${segKey}`
+  }
   const segKey = r.segments
     .map((s) => `${s.departureAirport}-${s.arrivalAirport}-${s.departureTime}`)
     .join('|')
