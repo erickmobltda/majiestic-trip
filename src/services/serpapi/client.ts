@@ -37,7 +37,18 @@ interface SerpApiFlight {
 interface SerpApiResponse {
   best_flights?: SerpApiFlight[]
   other_flights?: SerpApiFlight[]
+  search_information?: { flights_results_state?: string }
   error?: string
+}
+
+// SerpApi reports "no flights for this query" as an error string / empty state.
+// That's a normal outcome (e.g. unreal dates, no service on the route), not a
+// failure — so we return [] for it rather than throwing.
+function isNoResults(data: SerpApiResponse): boolean {
+  return (
+    data.search_information?.flights_results_state === 'Fully empty' ||
+    /hasn't returned any results/i.test(data.error ?? '')
+  )
 }
 
 export async function searchCashFlights(
@@ -67,6 +78,9 @@ export async function searchCashFlights(
 
     const data: SerpApiResponse = await response.json()
 
+    if (isNoResults(data)) {
+      return []
+    }
     if (data.error) {
       throw new Error(`SerpApi: ${data.error}`)
     }
